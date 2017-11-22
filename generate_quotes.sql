@@ -148,9 +148,13 @@ BEGIN
           
           SET num_quotes_injected = 0;
           
-          -- IF order_type = 'ask' THEN
-          CALL hft_shortselling(this_instrument, this_quote_seq_nbr, this_quote_time, order_type, price, volume, num_quotes_injected);
-         -- END IF;
+          
+          
+          -- /*
+          
+			CALL hft_engine(this_instrument, this_quote_seq_nbr, this_quote_time, order_type, price, volume, num_quotes_injected);
+		  
+          -- */
                     
           INSERT INTO STOCK_QUOTE_FEED
           VALUES(this_instrument,

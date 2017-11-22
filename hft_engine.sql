@@ -33,6 +33,7 @@ this_proc: BEGIN
   DECLARE best_price DECIMAL(18,4);
   DECLARE potential_matches INT DEFAULT 0;
   DECLARE exit_flag INT DEFAULT 0;
+  DECLARE alt_carry_over INT;
 
 
 
@@ -47,7 +48,7 @@ this_proc: BEGIN
 										  (new_bid_price * ASK_PRICE > 0 AND ASK_PRICE <= new_bid_price+0.0002) OR
                                           (new_ask_price > 0 AND BID_PRICE >= new_ask_price+0.0002)
                                           )
-									-- AND QUOTE_SEQ_NBR NOT IN (SELECT TARGET_QUOTE FROM FLASH_ORDER WHERE ORDER_STATUS = 'created')
+									  AND QUOTE_SEQ_NBR NOT IN (SELECT TARGET_QUOTE FROM FLASH_ORDER WHERE ORDER_STATUS = 'created')
                                       AND QUOTE_DATE = DATE(q_time)
                                    ORDER BY ASK_PRICE ASC, BID_PRICE DESC, QUOTE_SEQ_NBR, QUOTE_TIME;
 
@@ -131,7 +132,7 @@ this_proc: BEGIN
                     carry_over,
                     'pending',
                     this_quote_seq_nbr);
-                    SET this_bid_size = this_bid_size - carry_over;
+                    SET alt_carry_over = carry_over;-- SET this_bid_size = this_bid_size - carry_over;
                     SET carry_over = 0;
                     SET potential_matches = potential_matches +1;
 
@@ -177,7 +178,7 @@ this_proc: BEGIN
                       carry_over,
                       'pending',
                       this_quote_seq_nbr);
-                    SET this_ask_size = this_ask_size - carry_over;
+					SET alt_carry_over = carry_over;-- SET this_bid_size = this_bid_size - carry_over;                    
                     SET carry_over = 0;
                     SET potential_matches = potential_matches +1;
 
@@ -246,11 +247,12 @@ this_proc: BEGIN
 							  new_ask_price + 0.0002,
 							  volume-carry_over);
                               
-						  INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE)
+						  INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE, TRADING_DAY)
                           VALUES(
 							  this_instrument,
 							  seq_nbr,
-							  'short');
+							  'short',
+                              DATE(q_time));
 
 
 						  INSERT INTO FLASH_ORDER (INSTRUMENT_ID, TRADING_SYMBOL, QUOTE_SEQ_NBR, QUOTE_TIME,
@@ -320,11 +322,12 @@ this_proc: BEGIN
       						volume-carry_over,
       						0,0);
 						
-                          INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE)
+                          INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE, TRADING_DAY)
                           VALUES(
 							  this_instrument,
 							  seq_nbr,
-							  'long');
+							  'long',
+                              DATE(q_time));
                               
       					  INSERT INTO FLASH_ORDER (INSTRUMENT_ID, TRADING_SYMBOL, QUOTE_SEQ_NBR, QUOTE_TIME,
       														QUOTE_DATE, QUOTE_TYPE, QUOTE_PRICE, QUOTE_SIZE, ORDER_STATUS, TARGET_QUOTE)
@@ -353,8 +356,9 @@ this_proc: BEGIN
 
         IF ord_type = 'ask' THEN
 
-             IF this_bid_size = 0 THEN
+             IF this_bid_size - alt_carry_over = 0 THEN
                  SET best_price = this_bid_price;
+                 SET this_bid_size = this_bid_size - alt_carry_over;
              ELSE
                  SET best_price= this_bid_price +0.0001;
 
@@ -425,11 +429,12 @@ this_proc: BEGIN
     					   best_price,
     					   trade_size);
                            
-						 INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE)
+						 INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE, TRADING_DAY)
                          VALUES(
 							  this_instrument,
 							  seq_nbr,
-							  'short');
+							  'short',
+                              DATE(q_time));
                            
 
     					 INSERT INTO FLASH_ORDER (INSTRUMENT_ID, TRADING_SYMBOL, QUOTE_SEQ_NBR, QUOTE_TIME,
@@ -454,9 +459,9 @@ this_proc: BEGIN
 
         ELSE
 
-				  IF this_ask_size = 0 THEN
+				  IF this_ask_size - alt_carry_over = 0 THEN
 					SET best_price = this_ask_price;
-
+					SET this_ask_size = this_ask_size - alt_carry_over;
                   ELSE
 						SET best_price= this_bid_price -0.0001;
 
@@ -528,11 +533,12 @@ this_proc: BEGIN
 						0,0);
 
 
-					 INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE)
+					 INSERT INTO HFT_TRANSACTION (TARGET_INSTR, TARGET_QUOTE, ORDER_TYPE, TRADING_DAY)
                      VALUES(
 							  this_instrument,
 							  seq_nbr,
-							  'long');
+							  'long',
+                              DATE(q_time));
 
 					  INSERT INTO FLASH_ORDER (INSTRUMENT_ID, TRADING_SYMBOL, QUOTE_SEQ_NBR, QUOTE_TIME,
 														QUOTE_DATE, QUOTE_TYPE, QUOTE_PRICE, QUOTE_SIZE, ORDER_STATUS, TARGET_QUOTE)

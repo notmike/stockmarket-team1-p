@@ -1,10 +1,10 @@
-CREATE DEFINER=`moustafa`@`%` PROCEDURE `proc_new_trade`(IN INSTR INT, IN SEQ INT, IN T_TIME DATETIME, IN SIZE INT, IN PRICE DECIMAL(18,4))
+CREATE DEFINER=`moustafa`@`%` PROCEDURE `proc_new_trade`(IN TRADE_ID INT, IN INSTR INT, IN SEQ INT, IN T_TIME DATETIME, IN SIZE INT, IN PRICE DECIMAL(18,4))
 this_proc:BEGIN
 DECLARE this_order_id, this_target_seq, this_order_size INT;
 DECLARE this_order_price DECIMAL(18,4); DECLARE this_order_type VARCHAR(15);
 DECLARE transaction_type VARCHAR(15); DECLARE order_count INT;
 DECLARE this_profit, this_revenue, this_cost DECIMAL(18,4);
-
+DECLARE isProfitable BOOL DEFAULT FALSE;
 
  IF SEQ NOT IN (SELECT TARGET_QUOTE FROM HFT_TRANSACTION WHERE TARGET_INSTR = INSTR AND TARGET_QUOTE = SEQ) THEN LEAVE this_proc; END IF;
 
@@ -30,22 +30,26 @@ IF transaction_type = 'short' THEN
 	IF this_order_type = 'ask' THEN
 			SET this_cost = this_cost + this_order_size * this_order_price;
 	ELSE
-			SET this_revenue = this_revenue + this_order_size * this_order_price;
+			SET this_revenue = this_cost;
+			SET this_cost = this_order_size * this_order_price;
 	END IF;
 	SET this_profit = this_revenue - this_cost;
+    IF this_profit > 0 THEN SET isProfitable = TRUE; END IF;
 ELSE
-    
     IF this_order_type = 'ask' THEN
 			SET this_revenue = this_revenue + this_order_size * this_order_price;
 	ELSE
 			SET this_cost = this_cost + this_order_size * this_order_price;
 	END IF;
     SET this_profit = this_revenue - this_cost;
+    IF this_profit > 0 THEN SET isProfitable = TRUE; END IF;
 END IF;
 
 -- SELECT this_order_size, this_order_price, this_order_type, this_revenue, this_cost, this_profit;
 
 UPDATE FLASH_ORDER SET ORDER_STATUS = 'processed' WHERE ORDER_ID = this_order_id AND QUOTE_SEQ_NBR = SEQ AND INSTRUMENT_ID = INSTR;
 UPDATE HFT_TRANSACTION SET PROFIT = this_profit, COST = this_cost, REVENUE = this_revenue, NUM_TRADES=NUM_TRADES+1 WHERE TARGET_INSTR = INSTR AND TARGET_QUOTE = SEQ;    
-  
+DELETE FROM FR_TRADE WHERE TRADE_SEQ_NBR IN (SELECT TARGET_QUOTE FROM HFT_TRANSACTION WHERE TRADING_DAY < DATE(T_TIME) AND PROFIT <= 0); 
+DELETE FROM HFT_TRANSACTION WHERE TRADING_DAY < DATE(T_TIME) AND PROFIT <= 0;    
+INSERT INTO FR_TRADE (SELECT * FROM STOCK_TRADE WHERE TRADE_SEQ_NBR = SEQ AND ID NOT IN (SELECT ID FROM FR_TRADE));
 END
