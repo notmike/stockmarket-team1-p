@@ -1,4 +1,4 @@
-CREATE DEFINER=`mike`@`localhost` PROCEDURE generate_quotes_with_copair3(IN loops INT, IN switch INT, IN amp INT)
+CREATE DEFINER=`mike`@`localhost` PROCEDURE generate_quotes_with_copair(IN loops INT, IN switch INT, IN amp INT)
   BEGIN
     /* This generate_quotes() is same as other except calls my copair() function */
     DECLARE this_instrument INT(11);
@@ -137,7 +137,7 @@ CREATE DEFINER=`mike`@`localhost` PROCEDURE generate_quotes_with_copair3(IN loop
         /* depending on your task */ /* now write out the record*/
 
         /* ######### My copair() function will get called here before new quote gets into the pool ############# */
-        CALL copair1(this_instrument,
+        CALL copair(this_instrument,
                 this_quote_date,
                 new_quote_seq_nbr,
                 this_trading_symbol,

@@ -1,4 +1,4 @@
-CREATE DEFINER=`mike`@`localhost` PROCEDURE copair1(IN arg_instrument     INT, IN arg_quote_date DATE, IN arg_quote_seq_nbr INT,
+CREATE DEFINER=`mike`@`localhost` PROCEDURE copair(IN arg_instrument     INT, IN arg_quote_date DATE, IN arg_quote_seq_nbr INT,
                          IN arg_trading_symbol VARCHAR(15), IN arg_quote_time DATETIME, IN arg_ask_price DECIMAL(18, 4),
                          IN arg_ask_size       INT, IN arg_bid_price DECIMAL(18, 4), IN arg_bid_size INT)
   BEGIN
